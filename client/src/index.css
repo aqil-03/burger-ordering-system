@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+
+  --color-cream-50: #fffaf3;
+  --color-cream-100: #fff3e4;
+  --color-cream-200: #f5e7d6;
+  --color-cream-300: #ead4bd;
+
+  --color-ink-900: #241a15;
+  --color-ink-700: #4d3d34;
+  --color-ink-600: #645247;
+  --color-ink-500: #79675c;
+  --color-ink-400: #9a877b;
+
+  --color-brand-50: #fff0e8;
+  --color-brand-100: #ffe3d5;
+  --color-brand-300: #f4a17d;
+  --color-brand-500: #e85d2a;
+  --color-brand-600: #c94a1c;
+
+  --color-leaf-100: #dcf5e9;
+  --color-leaf-700: #146c48;
+}
+
+html {
+  min-width: 320px;
+  background-color: var(--color-cream-50);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--color-cream-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background-color: var(--color-brand-100);
+  color: var(--color-ink-900);
+}
+
+@page qr-poster {
+  size: A5 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body.qr-print-page * {
+    visibility: hidden;
+  }
+
+  body.qr-print-page .qr-print-area,
+  body.qr-print-page .qr-print-area * {
+    visibility: visible;
+  }
+
+  body.qr-print-page .qr-print-area {
+    page: qr-poster;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    width: 120mm;
+    max-width: 100%;
+    margin: 0 auto;
+    break-inside: avoid;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.qr-print-page .qr-print-area img {
+    max-width: 92mm !important;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

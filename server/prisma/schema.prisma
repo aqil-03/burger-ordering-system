@@ -1,0 +1,157 @@
+// This file defines the database tables and the relationships between them.
+// Prisma reads it and creates the matching SQLite tables.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A vendor is a person who can sign in to the protected dashboard.
+// Public vendor registration will not be allowed.
+model Vendor {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  role         String   @default("OWNER")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions         VendorSession[]
+  verifiedPayments PaymentEvent[] @relation("PaymentVerifiedBy")
+}
+
+// Login sessions are stored in the database so they can be revoked.
+// Only a hash of the session token is stored, never the raw token.
+model VendorSession {
+  id         String   @id @default(cuid())
+  vendorId   String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([expiresAt])
+}
+
+model MenuItem {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  priceSen    Int
+  imageUrl    String?
+  isAvailable Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([deletedAt, isAvailable, sortOrder])
+}
+
+// An order stores the customer details as a snapshot. Customers do not need
+// an account, so there is deliberately no Customer login table.
+model Order {
+  id               String   @id @default(cuid())
+  orderRef         String   @unique
+  trackingToken    String   @unique
+  queueDate        String
+  queueNumber      Int
+  customerName     String
+  customerPhone    String
+  totalSen         Int
+  paymentMethod    String
+  paymentStatus    String   @default("PENDING_PAYMENT")
+  orderStatus      String   @default("WAITING")
+  idempotencyKey   String   @unique
+  acceptedAt       DateTime?
+  preparingAt      DateTime?
+  readyAt          DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  cancellationNote String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items         OrderItem[]
+  paymentEvents PaymentEvent[]
+
+  @@unique([queueDate, queueNumber])
+  @@index([orderStatus, queueDate, queueNumber])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  menuItemId          String?
+  itemName            String
+  unitPriceSen        Int
+  quantity            Int
+  specialInstructions String?
+  createdAt           DateTime @default(now())
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+// Every payment status change is recorded here for the vendor's audit history.
+model PaymentEvent {
+  id           String   @id @default(cuid())
+  orderId      String
+  method       String
+  status       String
+  amountSen    Int
+  provider     String?
+  providerRef  String?
+  note         String?
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  verifiedBy Vendor? @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+}
+
+// One row per business day. Queue numbers are allocated inside a transaction
+// using this counter, which prevents duplicate numbers under concurrent orders.
+model QueueCounter {
+  queueDate  String   @id
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+// Single-row configuration table. The row uses the id "default".
+model Setting {
+  id                 String   @id @default("default")
+  restaurantName     String   @default("Burger House")
+  logoUrl            String?
+  duitnowQrUrl       String?
+  duitnowQrIsDemo    Boolean  @default(true)
+  paymentNote        String?
+  queueResetHour     Int      @default(4)
+  timezone           String   @default("Asia/Kuala_Lumpur")
+  maxPreparing       Int      @default(1)
+  onlineBankingMode  String   @default("DEMO")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
